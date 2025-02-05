@@ -25,9 +25,11 @@ void GetPositions(CJAVal &dataObject)
    for(int i=0; i<positionsTotal; i++)
      {
       mControl.mResetLastError();
+      ulong ticket = PositionGetTicket(i);
 
-      if(myposition.Select(PositionGetSymbol(i)))
+      if(ticket>0)
         {
+         PositionSelectByTicket(ticket);
          position["id"]=PositionGetInteger(POSITION_IDENTIFIER);
          position["magic"]=PositionGetInteger(POSITION_MAGIC);
          position["symbol"]=PositionGetString(POSITION_SYMBOL);
@@ -39,7 +41,8 @@ void GetPositions(CJAVal &dataObject)
          position["stoploss"]=PositionGetDouble(POSITION_SL);
          position["takeprofit"]=PositionGetDouble(POSITION_TP);
          position["volume"]=PositionGetDouble(POSITION_VOLUME);
-
+         position["comment"]=PositionGetString(POSITION_COMMENT);
+         mControl.mResetLastError();
          data["error"]=(bool) false;
          data["positions"].Add(position);
         }
