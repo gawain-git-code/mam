@@ -264,6 +264,66 @@ void TradingModule(CJAVal &dataObject)
   }
 
 //+------------------------------------------------------------------+
+//| Return a description of the trade transaction type               |
+//+------------------------------------------------------------------+
+string TradeTransactionTypeDescription(const ENUM_TRADE_TRANSACTION_TYPE transaction,const bool ext_descr=false)
+  {
+//--- "Cut out" the transaction type from the string obtained from enum
+   string res=StringSubstr(EnumToString(transaction),18);
+//--- Convert all obtained symbols to lower case and replace the first letter from small to capital
+   if(res.Lower())
+      res.SetChar(0,ushort(res.GetChar(0)-0x20));
+//--- Replace all underscore characters with space in the resulting line
+   StringReplace(res,"_"," ");
+   string descr="";
+   switch(transaction)
+     {
+      case TRADE_TRANSACTION_ORDER_ADD       :  descr=" (Adding a new open order)";                                                                   break;
+      case TRADE_TRANSACTION_ORDER_UPDATE    :  descr=" (Updating an open order)";                                                                    break;
+      case TRADE_TRANSACTION_ORDER_DELETE    :  descr=" (Removing an order from the list of the open ones)";                                          break;
+      case TRADE_TRANSACTION_DEAL_ADD        :  descr=" (Adding a deal to the history)";                                                              break;
+      case TRADE_TRANSACTION_DEAL_UPDATE     :  descr=" (Updating a deal in the history)";                                                            break;
+      case TRADE_TRANSACTION_DEAL_DELETE     :  descr=" (Deleting a deal from the history)";                                                          break;
+      case TRADE_TRANSACTION_HISTORY_ADD     :  descr=" (Adding an order to the history as a result of execution or cancellation)";                   break;
+      case TRADE_TRANSACTION_HISTORY_UPDATE  :  descr=" (Changing an order located in the orders history)";                                           break;
+      case TRADE_TRANSACTION_HISTORY_DELETE  :  descr=" (Deleting an order from the orders history)";                                                 break;
+      case TRADE_TRANSACTION_POSITION        :  descr=" (Changing a position not related to a deal execution)";                                       break;
+      case TRADE_TRANSACTION_REQUEST         :  descr=" (The trade request has been processed by a server and processing result has been received)";  break;
+      default: break;
+     }
+   return res+(!ext_descr ? "" : descr);
+   /* Sample output:
+      Order add (Adding a new open order)
+   */
+  }
+
+//+------------------------------------------------------------------+
+//| Returns transaction textual description                          |
+//+------------------------------------------------------------------+
+string TransactionDescription(const MqlTradeTransaction &trans)
+  {
+//--- 
+   string desc=EnumToString(trans.type)+"\r\n";
+   desc+="Symbol: "+trans.symbol+"\r\n";
+   desc+="Deal ticket: "+(string)trans.deal+"\r\n";
+   desc+="Deal type: "+EnumToString(trans.deal_type)+"\r\n";
+   desc+="Order ticket: "+(string)trans.order+"\r\n";
+   desc+="Order type: "+EnumToString(trans.order_type)+"\r\n";
+   desc+="Order state: "+EnumToString(trans.order_state)+"\r\n";
+   desc+="Order time type: "+EnumToString(trans.time_type)+"\r\n";
+   desc+="Order expiration: "+TimeToString(trans.time_expiration)+"\r\n";
+   desc+="Price: "+StringFormat("%G",trans.price)+"\r\n";
+   desc+="Price trigger: "+StringFormat("%G",trans.price_trigger)+"\r\n";
+   desc+="Stop Loss: "+StringFormat("%G",trans.price_sl)+"\r\n";
+   desc+="Take Profit: "+StringFormat("%G",trans.price_tp)+"\r\n";
+   desc+="Volume: "+StringFormat("%G",trans.volume)+"\r\n";
+   desc+="Position: "+(string)trans.position+"\r\n";
+   desc+="Position by: "+(string)trans.position_by+"\r\n";
+//--- return the obtained string
+   return desc;
+  }
+
+//+------------------------------------------------------------------+
 //| TradeTransaction function                                        |
 //+------------------------------------------------------------------+
 void OnTradeTransaction(const MqlTradeTransaction &trans,
@@ -271,51 +331,120 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
                         const MqlTradeResult &result)
   {
 
-   ENUM_TRADE_TRANSACTION_TYPE  trans_type=trans.type;
-   switch(trans.type)
-     {
-      case  TRADE_TRANSACTION_REQUEST:
-        {
-         CJAVal data, req, res;
+    ENUM_TRADE_TRANSACTION_TYPE  trans_type=trans.type;
+    // string desc = TradeTransactionTypeDescription(trans_type, true);
+    // Print(desc);
+    if(trans.type == TRADE_TRANSACTION_DEAL_ADD)
+    {
+      CJAVal data, transaction, req, res;
+      // Fill transaction data
+      transaction["type"]=EnumToString(trans.type);
+      transaction["symbol"]=(string) trans.symbol;
+      transaction["deal_ticket"]=(int) trans.deal;
+      transaction["deal_type"]=EnumToString(trans.deal_type);
+      transaction["order_ticket"]=(int) trans.order;
+      transaction["order_type"]=EnumToString(trans.order_type);
+      transaction["order_state"]=EnumToString(trans.order_state);
+      transaction["time_type"]=EnumToString(trans.time_type);
+      transaction["time_expiration"]=TimeToString(trans.time_expiration);
+      transaction["price"]=(double) trans.price;
+      transaction["price_trigger"]=(double) trans.price_trigger;
+      transaction["sl"]=(double) trans.price_sl;
+      transaction["tp"]=(double) trans.price_tp;
+      transaction["volume"]=(double) trans.volume;
+      transaction["position"]=(int) trans.position;
+      transaction["position_by"]=(int) trans.position_by;
+  
+      // Fill request data
+      req["action"]=EnumToString(request.action);
+      req["order"]=(int) request.order;
+      req["symbol"]=(string) request.symbol;
+      req["volume"]=(double) request.volume;
+      req["price"]=(double) request.price;
+      req["stoplimit"]=(double) request.stoplimit;
+      req["sl"]=(double) request.sl;
+      req["tp"]=(double) request.tp;
+      req["deviation"]=(int) request.deviation;
+      req["type"]=EnumToString(request.type);
+      req["type_filling"]=EnumToString(request.type_filling);
+      req["type_time"]=EnumToString(request.type_time);
+      req["expiration"]=(int) request.expiration;
+      req["comment"]=(string) request.comment;
+      req["position"]=(int) request.position;
+      req["position_by"]=(int) request.position_by;
+  
+      // Fill result data
+      res["retcode"]=(int) result.retcode;
+      res["result"]=(string) GetRetcodeID(result.retcode);
+      res["deal"]=(int) result.order;
+      res["order"]=(int) result.order;
+      res["volume"]=(double) result.volume;
+      res["price"]=(double) result.price;
+      res["comment"]=(string) result.comment;
+      res["request_id"]=(int) result.request_id;
+      res["retcode_external"]=(int) result.retcode_external;
+  
+      data["transaction"].Set(transaction);
+      data["request"].Set(req);
+      data["result"].Set(res);
+  
+      string t=data.Serialize();
+      if(debug)
+         Print(t);
+      InformClientSocket(streamSocket,t);
+  
+      string desc = TransactionDescription(trans);
+      Print(desc);
+    }
 
-         req["action"]=EnumToString(request.action);
-         req["order"]=(int) request.order;
-         req["symbol"]=(string) request.symbol;
-         req["volume"]=(double) request.volume;
-         req["price"]=(double) request.price;
-         req["stoplimit"]=(double) request.stoplimit;
-         req["sl"]=(double) request.sl;
-         req["tp"]=(double) request.tp;
-         req["deviation"]=(int) request.deviation;
-         req["type"]=EnumToString(request.type);
-         req["type_filling"]=EnumToString(request.type_filling);
-         req["type_time"]=EnumToString(request.type_time);
-         req["expiration"]=(int) request.expiration;
-         req["comment"]=(string) request.comment;
-         req["position"]=(int) request.position;
-         req["position_by"]=(int) request.position_by;
+  //  switch(trans.type)
+  //    {
+  //     case  TRADE_TRANSACTION_REQUEST:
+  //       {
+  //        CJAVal data, req, res;
 
-         res["retcode"]=(int) result.retcode;
-         res["result"]=(string) GetRetcodeID(result.retcode);
-         res["deal"]=(int) result.order;
-         res["order"]=(int) result.order;
-         res["volume"]=(double) result.volume;
-         res["price"]=(double) result.price;
-         res["comment"]=(string) result.comment;
-         res["request_id"]=(int) result.request_id;
-         res["retcode_external"]=(int) result.retcode_external;
+  //        req["action"]=EnumToString(request.action);
+  //        req["order"]=(int) request.order;
+  //        req["symbol"]=(string) request.symbol;
+  //        req["volume"]=(double) request.volume;
+  //        req["price"]=(double) request.price;
+  //        req["stoplimit"]=(double) request.stoplimit;
+  //        req["sl"]=(double) request.sl;
+  //        req["tp"]=(double) request.tp;
+  //        req["deviation"]=(int) request.deviation;
+  //        req["type"]=EnumToString(request.type);
+  //        req["type_filling"]=EnumToString(request.type_filling);
+  //        req["type_time"]=EnumToString(request.type_time);
+  //        req["expiration"]=(int) request.expiration;
+  //        req["comment"]=(string) request.comment;
+  //        req["position"]=(int) request.position;
+  //        req["position_by"]=(int) request.position_by;
 
-         data["request"].Set(req);
-         data["result"].Set(res);
+  //        res["retcode"]=(int) result.retcode;
+  //        res["result"]=(string) GetRetcodeID(result.retcode);
+  //        res["deal"]=(int) result.order;
+  //        res["order"]=(int) result.order;
+  //        res["volume"]=(double) result.volume;
+  //        res["price"]=(double) result.price;
+  //        res["comment"]=(string) result.comment;
+  //        res["request_id"]=(int) result.request_id;
+  //        res["retcode_external"]=(int) result.retcode_external;
 
-         string t=data.Serialize();
-         if(debug)
-            Print(t);
-         InformClientSocket(streamSocket,t);
-        }
-      break;
-      default:
-        {} break;
-     }
+  //        data["request"].Set(req);
+  //        data["result"].Set(res);
+
+  //        string t=data.Serialize();
+  //        if(debug)
+  //           Print(t);
+  //        InformClientSocket(streamSocket,t);
+  //       }
+  //     break;
+  //     default:
+  //     {
+  //        string desc = TransactionDescription(trans);
+  //        Print(desc);
+  //      }
+  //      break;
+    //  }
   }
 //+------------------------------------------------------------------+
